@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subway Runner</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: url('train track.png');
+            background-size: cover;
+            background-position: center;
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        #logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px; /* Adjust width as needed */
+        }
+    </style>
+</head>
+<body>
+    <img id="logo" src="logo.png" alt="Subway Surfers Logo">
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameOver">
+        <h2>Game Over</h2>
+        <p>Score: <span id="finalScore"></span></p>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreSpan = document.getElementById('finalScore');
+
+        canvas.width = 400;
+        canvas.height = 600;
+
+        const LANE_WIDTH = canvas.width / 3;
+        const PLAYER_WIDTH = 40;
+        const PLAYER_HEIGHT = 60;
+        const OBSTACLE_WIDTH = 80;
+        const OBSTACLE_HEIGHT = 80;
+
+        const playerImage = new Image();
+        playerImage.src = 'Jake.gif';
+
+        const trainImage = new Image();
+        trainImage.src = 'train.png';
+
+        let player = {
+            x: canvas.width / 2 - PLAYER_WIDTH / 2,
+            y: canvas.height - PLAYER_HEIGHT - 20,
+            lane: 1
+        };
+
+        let obstacles = [];
+        let score = 0;
+        let gameSpeed = 5;
+        let spawnInterval = 1500;
+        let lastSpawnTime = 0;
+        let gameRunning = true;
+
+        function drawPlayer() {
+            ctx.drawImage(playerImage, player.x, player.y, PLAYER_WIDTH, PLAYER_HEIGHT);
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.drawImage(trainImage, obstacle.x, obstacle.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+            });
+        }
+
+        function moveObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.y += gameSpeed;
+            });
+
+            obstacles = obstacles.filter(obstacle => obstacle.y < canvas.height);
+        }
+
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            obstacles.push({
+                x: lane * LANE_WIDTH + (LANE_WIDTH - OBSTACLE_WIDTH) / 2,
+                y: -OBSTACLE_HEIGHT
+            });
+        }
+
+        function checkCollision() {
+            return obstacles.some(obstacle => 
+                player.x < obstacle.x + OBSTACLE_WIDTH &&
+                player.x + PLAYER_WIDTH > obstacle.x &&
+                player.y < obstacle.y + OBSTACLE_HEIGHT &&
+                player.y + PLAYER_HEIGHT > obstacle.y
+            );
+        }
+
+        function updateScore() {
+            score++;
+            if (score % 100 === 0) {
+                gameSpeed += 0.5;
+                spawnInterval = Math.max(500, spawnInterval - 100);
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 10, 30);
+        }
+
+        function gameLoop(currentTime) {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentTime - lastSpawnTime > spawnInterval) {
+                spawnObstacle();
+                lastSpawnTime = currentTime;
+            }
+
+            moveObstacles();
+            drawPlayer();
+            drawObstacles();
+            drawScore();
+
+            if (checkCollision()) {
+                gameOver();
+            } else {
+                updateScore();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            finalScoreSpan.textContent = score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        function restartGame() {
+            obstacles = [];
+            score = 0;
+            gameSpeed = 5;
+            spawnInterval = 1500;
+            player.lane = 1;
+            player.x = canvas.width / 2 - PLAYER_WIDTH / 2;
+            gameRunning = true;
+            gameOverScreen.style.display = 'none';
+            lastSpawnTime = 0;
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (!gameRunning) return;
+
+            if (event.key === 'ArrowLeft' && player.lane > 0) {
+                player.lane--;
+                player.x = player.lane * LANE_WIDTH + (LANE_WIDTH - PLAYER_WIDTH) / 2;
+            } else if (event.key === 'ArrowRight' && player.lane < 2) {
+                player.lane++;
+                player.x = player.lane * LANE_WIDTH + (LANE_WIDTH - PLAYER_WIDTH) / 2;
+            }
+        });
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
